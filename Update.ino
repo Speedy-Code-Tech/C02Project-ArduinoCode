@@ -57,6 +57,7 @@ void setup() {
     pinMode(A0,INPUT); 
     pinMode(D0,OUTPUT); 
     pinMode(D1,OUTPUT);    
+    pinMode(D7,OUTPUT);    
 
     WiFiManager wifiManager;
     wifiManager.resetSettings();
@@ -92,6 +93,10 @@ void setup() {
   // GMT -1 = -3600
   // GMT 0 = 0
   timeClient.setTimeOffset(28800);
+    lcd.setCursor(0,0);
+    lcd.print("TEAM JOLLYCODE");
+    lcd.setCursor(0,1);
+    lcd.println("Loading...");
 }
 
 int times =0;
@@ -164,7 +169,7 @@ delay(100);
   Serial.println(currentYear);
 
   //Print complete date:
-  String currentDate = String(currentYear) + "/" + String(currentMonth) + "/" + String(monthDay)+"-"+String(currentHour)+":"+String(currentMinute)+":"+String(currentSecond);
+  String currentDate = String(count) + "-" +String(currentYear) + "/" + String(currentMonth) + "/" + String(monthDay)+"-"+String(currentHour)+":"+String(currentMinute)+":"+String(currentSecond);
   Serial.print("Current date: ");
   String timeStamp = currentDate;
 
@@ -180,13 +185,13 @@ delay(100);
           
   if(count>200){
     Serial.print("Low: ");
-    Serial.println(val);
-    digitalWrite(D0, LOW);
+    Serial.println(count);
+    digitalWrite(D7, LOW);
   delay(100);
   }else{
     Serial.print("High: ");
-    Serial.println(val);
-    digitalWrite(D0, HIGH);
+    Serial.println(count);
+    digitalWrite(D7, HIGH);
 delay(100);
   }
   
