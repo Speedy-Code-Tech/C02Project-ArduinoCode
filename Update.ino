@@ -1,4 +1,5 @@
-#include <LiquidCrystal.h>
+#include <LiquidCrystal_I2C.h>
+
 #include <NTPClient.h>
 #include <ESP8266WiFi.h>          //https://github.com/esp8266/Arduino
 #include <DNSServer.h>
@@ -7,7 +8,7 @@
 #include <Firebase_ESP_Client.h>
 
 
-LiquidCrystal lcd(0x27, 16, 2);
+LiquidCrystal_I2C lcd(0x27, 16, 2);
 //Provide the token generation process info.
 #include "addons/TokenHelper.h"
 //Provide the RTDB payload printing info and other helper functions.
@@ -32,13 +33,25 @@ bool signupOK = false;
 const long utcOffsetInSeconds = 28800;
 
 // Define NTP Client to get time
+// WiFiUDP ntpUDP;
+// NTPClient timeClient(ntpUDP, "pool.ntp.org", utcOffsetInSeconds);
+// Define NTP Client to get time
+
 WiFiUDP ntpUDP;
-NTPClient timeClient(ntpUDP, "pool.ntp.org", utcOffsetInSeconds);
+NTPClient timeClient(ntpUDP, "pool.ntp.org");
+
+
+//Week Days
+String weekDays[7]={"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
+
+//Month names
+String months[12]={"January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"};
+
 
 void setup() {
     Serial.begin(9600);
     
-    lcd.begin();
+    lcd.init();
     lcd.backlight();
 
     pinMode(A0,INPUT); 
@@ -71,48 +84,113 @@ void setup() {
     Firebase.begin(&config, &auth);
     Firebase.reconnectWiFi(true);
   
-    timeClient.begin();
+    // Initialize a NTPClient to get time
+  timeClient.begin();
+  // Set offset time in seconds to adjust for your timezone, for example:
+  // GMT +1 = 3600
+  // GMT +8 = 28800
+  // GMT -1 = -3600
+  // GMT 0 = 0
+  timeClient.setTimeOffset(28800);
 }
 
 int times =0;
+int i =0;
 
 void loop() { 
-    while(!timeClient.update()) {
-      timeClient.forceUpdate();
-    }
-
-    String formattedDate = timeClient.getFormattedDate();
-    int splitT = formattedDate.indexOf("T");
-    String dayStamp = formattedDate.substring(0, splitT);
-    
-    Serial.println(dayStamp);
-    
-    // Extract time
-    String timeStamp = formattedDate.substring(splitT+1, formattedDate.length()-1);
-    Serial.println(timeStamp);
+   
     int count = analogRead(A0); 
-      
-      Firebase.RTDB.setInt(&fbdo, "currenVal", count)
-        if(i==50000){
-          Firebase.RTDB.setString(&fbdo,"History",count+","+dayStamp+","+timeStamp);
-              i=0;
-        }
-          i=i+1000;
-          
-        if(count>200){
-          digitalWrite(D0,HIGH);
-          digitalWrite(D1,HIGH);
-        }else{
-          digitalWrite(D0,LOW);
-          digitalWrite(D1,LOW);
-        }
-    
+ 
+    timeClient.update();
     lcd.clear();
-    lcd.setCursor(0,0);
-    lcd.print("TEAM JOLLYOCDE");
+        lcd.setCursor(0,0);
+    lcd.print("TEAM JOLLYCODE");
     lcd.setCursor(0,1);
-    lcd.println("C02 VAL: "+count)
+    lcd.println("C02 VAL:"+String(count));
+
+ if(count>200){
+    Serial.print("Low: ");
+    Serial.println(count);
+    digitalWrite(D0, LOW);
+  delay(100);
+  }else{
+    Serial.print("High: ");
+    Serial.println(count);
+    digitalWrite(D0, HIGH);
+delay(100);
+  }
+ 
+  time_t epochTime = timeClient.getEpochTime();
+  Serial.print("Epoch Time: ");
+  Serial.println(epochTime);
+  
+  String formattedTime = timeClient.getFormattedTime();
+  Serial.print("Formatted Time: ");
+  Serial.println(formattedTime);  
+
+  int currentHour = timeClient.getHours();
+  Serial.print("Hour: ");
+  Serial.println(currentHour);  
+
+  int currentMinute = timeClient.getMinutes();
+  Serial.print("Minutes: ");
+  Serial.println(currentMinute); 
+   
+  int currentSecond = timeClient.getSeconds();
+  Serial.print("Seconds: ");
+  Serial.println(currentSecond);  
+
+  String weekDay = weekDays[timeClient.getDay()];
+  Serial.print("Week Day: ");
+  Serial.println(weekDay);    
+
+  //Get a time structure
+  struct tm *ptm = gmtime ((time_t *)&epochTime); 
+
+  int monthDay = ptm->tm_mday;
+  Serial.print("Month day: ");
+  Serial.println(monthDay);
+
+  int currentMonth = ptm->tm_mon+1;
+  Serial.print("Month: ");
+  Serial.println(currentMonth);
+
+  String currentMonthName = months[currentMonth-1];
+  Serial.print("Month name: ");
+  Serial.println(currentMonthName);
+
+  int currentYear = ptm->tm_year+1900;
+  Serial.print("Year: ");
+  Serial.println(currentYear);
+
+  //Print complete date:
+  String currentDate = String(currentYear) + "/" + String(currentMonth) + "/" + String(monthDay)+"-"+String(currentHour)+":"+String(currentMinute)+":"+String(currentSecond);
+  Serial.print("Current date: ");
+  String timeStamp = currentDate;
+
+
+      Firebase.RTDB.setInt(&fbdo, "currenVal", count);
+      Serial.println(count);
+        if(i==3000){
+          Firebase.RTDB.pushString(&fbdo,"History",timeStamp);
+              i=0;
+        }else{
+          i=i+1000;
+        }
+          
+  if(count>200){
+    Serial.print("Low: ");
+    Serial.println(val);
+    digitalWrite(D0, LOW);
+  delay(100);
+  }else{
+    Serial.print("High: ");
+    Serial.println(val);
+    digitalWrite(D0, HIGH);
+delay(100);
+  }
   
     delay(1000);
 }
+
 
